@@ -171,6 +171,7 @@ function run(
 ) {
 	void (async () => {
 		const child = spawn(command, ["--permission-mode", "dangerous", "acp"], {
+			detached: process.platform !== "win32",
 			stdio: ["pipe", "pipe", "ignore"],
 		});
 		const prior = previous(request.messages);
@@ -179,6 +180,7 @@ function run(
 		let partial: AssistantMessage | undefined;
 		let answer: TextContent | undefined;
 		let thought: ThinkingContent | undefined;
+		let aborted = false;
 		const append = (kind: "text" | "thinking", delta: string) => {
 			if (!partial || !delta) return;
 			const block = kind === "text"
@@ -212,8 +214,8 @@ function run(
 			if (update.sessionUpdate === "tool_call") append("thinking", `\n${update.title}\n`);
 		});
 		const cancel = () => {
+			aborted = true;
 			if (session) connection.notify("session/cancel", { sessionId: session });
-			setTimeout(() => child.kill(), 1_000);
 		};
 		options?.signal?.addEventListener("abort", cancel, { once: true });
 		try {
@@ -292,7 +294,15 @@ function run(
 		} finally {
 			active = false;
 			options?.signal?.removeEventListener("abort", cancel);
-			child.kill();
+			if (aborted && child.pid && process.platform !== "win32") {
+				try {
+					process.kill(-child.pid);
+				} catch {
+					child.kill();
+				}
+			} else {
+				child.kill();
+			}
 		}
 	})();
 }
