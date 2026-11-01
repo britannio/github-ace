@@ -3,6 +3,10 @@ id: 01M6CQM8H0C9R83DEV0CV3E6ET
 anchor: function run
 created: 2026-11-01T23:38:00Z
 norm: '1'
+sig: 5e75f6e48a81e549
+body_hash: 255ec52ddc5bccd4
+raw_hash: 2a8298b4021831d2
+lines: 232-381
 supersedes: 01M6CKB37N968W1X31FR9KVCKY
 ---
 
