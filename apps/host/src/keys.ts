@@ -216,7 +216,7 @@ function catalog(
 			},
 		},
 	});
-	const devin = Bun.which("devin");
+	const devin = Bun.which("devin", { PATH: process.env.PATH });
 	if (devin) models.setProvider(devinProvider(devin, cwd));
 	return models;
 }
