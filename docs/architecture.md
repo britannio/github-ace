@@ -293,6 +293,12 @@ read the same preference; `ACE_MODEL` and an explicit per-channel model still ta
 Existing chats keep their chosen model. Adding credentials later makes an unconfigured channel's
 agent available without recreating the channel or restarting its worker.
 
+Local agents that speak ACP over stdio are another host model source. A Devin CLI found on PATH
+appears as `acp/devin`; `ace acp add <name> <command…>` saves others in `settings.json` and each
+appears as `acp/<name>`. A channel reads the list when its worker starts. ACP runs are a thin
+local prototype: the client works in the channel's project, its tool updates stream as working
+text, and pi keeps the transcript and run lifecycle.
+
 Host configuration is captured before credential cleanup. A worker receives the host's launch
 environment, then seals credentials again before running tools. Source workers disable automatic
 `.env` loading, so an unrelated working directory cannot change their credentials or configuration.

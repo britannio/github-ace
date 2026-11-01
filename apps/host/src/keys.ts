@@ -9,8 +9,10 @@ import { homedir } from "node:os";
 import type { MutableModels } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 
+import { type AcpClient, acpProvider } from "./acp";
 import { config } from "./config";
-import { devinProvider } from "./acp";
+import { failure, log } from "./log";
+import { acp } from "./preferences";
 import type { CredentialStatus } from "./protocol";
 
 const sealed = new Map<string, string>();
@@ -216,8 +218,19 @@ function catalog(
 			},
 		},
 	});
+	// Model availability must not fail on a hand-edited setting; `ace acp` reports it instead.
+	let clients: AcpClient[] = [];
+	try {
+		clients = acp();
+	} catch (error) {
+		log("warn", "acp.settings", failure(error));
+	}
 	const devin = Bun.which("devin", { PATH: process.env.PATH });
-	if (devin) models.setProvider(devinProvider(devin, cwd));
+	// A configured client named devin overrides the detected one's command line.
+	if (devin && !clients.some((client) => client.name === "devin")) {
+		clients.unshift({ name: "devin", command: [devin, "--permission-mode", "dangerous", "acp"] });
+	}
+	if (clients.length) models.setProvider(acpProvider(clients, cwd));
 	return models;
 }
 
