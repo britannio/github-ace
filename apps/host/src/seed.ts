@@ -30,7 +30,7 @@ export async function offline<T>(
 		model: record.model,
 		...(relocate ? { relocate } : {}),
 		storage: await openNodeSqliteStorage(catalog.paths(record.id).storage),
-		models: models(),
+		models: models(record.project),
 		env(cwd) {
 			const env = new NodeExecutionEnv({ cwd });
 			envs.push(env);

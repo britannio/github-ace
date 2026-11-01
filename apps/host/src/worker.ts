@@ -81,7 +81,7 @@ const channel = await Channel.open({
 	lane: record.lane,
 	defaultModel,
 	storage: await openNodeSqliteStorage(paths.storage),
-	models: models(),
+	models: models(record.project),
 	desktop,
 	browser,
 	images,

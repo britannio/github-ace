@@ -10,6 +10,7 @@ import type { MutableModels } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 
 import { config } from "./config";
+import { devinProvider } from "./acp";
 import type { CredentialStatus } from "./protocol";
 
 const sealed = new Map<string, string>();
@@ -198,8 +199,11 @@ export async function latest(name: string, fresh?: boolean): Promise<CredentialS
 	};
 }
 
-function catalog(lookup: (name: string) => Promise<string | undefined>): MutableModels {
-	return builtinModels({
+function catalog(
+	lookup: (name: string) => Promise<string | undefined>,
+	cwd?: string,
+): MutableModels {
+	const models = builtinModels({
 		authContext: {
 			env: lookup,
 			async fileExists(path) {
@@ -212,11 +216,14 @@ function catalog(lookup: (name: string) => Promise<string | undefined>): Mutable
 			},
 		},
 	});
+	const devin = Bun.which("devin", { PATH: process.env.PATH });
+	if (devin) models.setProvider(devinProvider(devin, cwd));
+	return models;
 }
 
 /** pi-ai's built-in providers, resolving credentials through Ace. */
-export function models(): MutableModels {
-	return catalog(key);
+export function models(cwd?: string): MutableModels {
+	return catalog(key, cwd);
 }
 
 /**
