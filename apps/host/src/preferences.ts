@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import type { ModelRef } from "@ace/channel/protocol";
 
+import type { AcpClient } from "./acp";
 import { config } from "./config";
 import * as directory from "./directory";
 import type { Compute } from "./protocol";
@@ -14,7 +15,7 @@ export function isModel(value: unknown): value is ModelRef {
 		&& typeof value.modelId === "string" && value.modelId.length > 0;
 }
 
-type Saved = { model?: ModelRef | null; compute?: Compute; folder?: string };
+type Saved = { model?: ModelRef | null; compute?: Compute; folder?: string; acp?: AcpClient[] };
 
 function saved(): Saved {
 	let text: string;
@@ -74,4 +75,31 @@ export function saveCompute(value: Compute): void {
 
 export function saveFolder(value: string): void {
 	save({ folder: value });
+}
+
+/** An ACP client's name becomes the model id in `acp/<name>`; ids stay lowercase kebab-case. */
+const CLIENT = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+
+export function isAcpClient(value: unknown): value is AcpClient {
+	return typeof value === "object" && value !== null
+		&& "name" in value && typeof value.name === "string" && CLIENT.test(value.name)
+		&& "command" in value && Array.isArray(value.command) && value.command.length > 0
+		&& value.command.every((arg) => typeof arg === "string" && arg.length > 0);
+}
+
+/** Local agents this host runs over ACP, saved as `acp` in settings.json. */
+export function acp(): AcpClient[] {
+	const { acp } = saved();
+	if (acp === undefined) return [];
+	if (
+		!Array.isArray(acp) || !acp.every(isAcpClient)
+		|| new Set(acp.map((client) => client.name)).size !== acp.length
+	) {
+		throw new Error("An ACP client in Ace settings is invalid");
+	}
+	return acp;
+}
+
+export function saveAcp(clients: AcpClient[]): void {
+	save({ acp: clients });
 }

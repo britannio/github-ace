@@ -20,7 +20,7 @@ import { dir as logDir, failure, log, open as openLog } from "./log";
 import { health, HostConflict } from "./health";
 import { type Filter, follow, print } from "./logs";
 import * as loopback from "./loopback";
-import { preference } from "./preferences";
+import { acp, isAcpClient, preference, saveAcp } from "./preferences";
 import * as projects from "./projects";
 import {
 	channelProject,
@@ -86,6 +86,9 @@ const USAGE = `ace — channels on this host
   ace desktop <channel> on|off                   let the channel's agents use native desktop tools
   ace models
   ace model [provider/id|auto]                   show or set the model for a chat's first agent run
+  ace acp                                        list this host's ACP clients
+  ace acp add <name> [--] <command…>             add an ACP client; the command starts it in ACP mode
+  ace acp rm <name>                              remove a configured ACP client
   ace key set <NAME>                             store a key in the OS keychain, read from stdin;
                                                  a running host saves it so it can read it unprompted
   ace key rm <NAME>
@@ -516,6 +519,44 @@ async function main() {
 		}
 		case "models": {
 			for (const m of await models()) console.log(`${m.provider}/${m.modelId}`);
+			return;
+		}
+		case "acp": {
+			if (ref === "add") {
+				const [name, ...argv] = rest;
+				if (!name || !argv.length) {
+					throw new Error(
+						"ace acp add <name> [--] <command…>, such as"
+							+ " ace acp add claude -- bunx @zed-industries/claude-code-acp",
+					);
+				}
+				if (!isAcpClient({ name, command: argv })) {
+					throw new Error("Name a client with lowercase letters, digits and dashes");
+				}
+				saveAcp([
+					...acp().filter((client) => client.name !== name),
+					{ name, command: argv as [string, ...string[]] },
+				]);
+				return console.log(`Added acp/${name}. Channels pick it up as their workers restart.`);
+			}
+			if (ref === "rm") {
+				if (rest.length !== 1) throw new Error("ace acp rm <name>");
+				const [name] = rest;
+				const clients = acp();
+				saveAcp(clients.filter((client) => client.name !== name));
+				return console.log(
+					clients.some((client) => client.name === name)
+						? `Removed ${name}.`
+						: `No ACP client named ${name} is configured.`,
+				);
+			}
+			if (ref) throw new Error("ace acp [add <name> [--] <command…> | rm <name>]");
+			const clients = acp();
+			const devin = Bun.which("devin", { PATH: process.env.PATH });
+			const detected = devin && !clients.some((client) => client.name === "devin");
+			for (const client of clients) console.log(`${client.name}\t${client.command.join(" ")}`);
+			if (detected) console.log(`devin\t${devin} --permission-mode dangerous acp (detected)`);
+			if (!clients.length && !detected) console.log("No ACP clients");
 			return;
 		}
 		case "project": {
