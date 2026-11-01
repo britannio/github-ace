@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
 
 import {
@@ -162,6 +162,45 @@ function message(session?: string): AssistantMessage {
 	};
 }
 
+function stop(child: ReturnType<typeof spawn>, tree = false) {
+	if (!tree || !child.pid) return child.kill();
+	if (process.platform === "win32") {
+		const result = spawnSync("taskkill", ["/pid", `${child.pid}`, "/t", "/f"], {
+			stdio: "ignore",
+		});
+		if (!result.error) return true;
+		return child.kill();
+	}
+	const result = spawnSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" });
+	const children = new Map<number, number[]>();
+	for (const line of result.stdout.split("\n")) {
+		const [pid, parent] = line.trim().split(/\s+/).map(Number);
+		if (!pid || !parent) continue;
+		const values = children.get(parent) || [];
+		values.push(pid);
+		children.set(parent, values);
+	}
+	const descendants: number[] = [];
+	const collect = (parent: number) => {
+		for (const pid of children.get(parent) || []) {
+			collect(pid);
+			descendants.push(pid);
+		}
+	};
+	collect(child.pid);
+	for (const pid of descendants) {
+		try {
+			process.kill(pid);
+		} catch {}
+	}
+	try {
+		process.kill(-child.pid);
+		return true;
+	} catch {
+		return child.kill();
+	}
+}
+
 function run(
 	command: string,
 	cwd: string,
@@ -294,15 +333,7 @@ function run(
 		} finally {
 			active = false;
 			options?.signal?.removeEventListener("abort", cancel);
-			if (aborted && child.pid && process.platform !== "win32") {
-				try {
-					process.kill(-child.pid);
-				} catch {
-					child.kill();
-				}
-			} else {
-				child.kill();
-			}
+			stop(child, aborted);
 		}
 	})();
 }

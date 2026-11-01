@@ -3,10 +3,10 @@ id: 01M6CHVR482JVP1NAADSSF080Z
 anchor: '@file'
 created: 2026-11-01T21:57:14Z
 norm: '1'
-sig: ad7364b69ca8c1ef
-body_hash: 0aaf7c3ab114f8b0
-raw_hash: de2a7104f20c71b7
-vouched: 2026-11-01T22:15:31Z
+sig: ecd69e3d98e0fda6
+body_hash: 0a279c24962d1f25
+raw_hash: 10286fbe1cf5ffbd
+vouched: 2026-11-01T22:23:14Z
 lines: 1-324
 ---
 
